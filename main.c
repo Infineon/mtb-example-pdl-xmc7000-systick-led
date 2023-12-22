@@ -1,14 +1,13 @@
 /******************************************************************************
 * File Name:   main.c
 *
-* Description: This is the source code for the CE234615 - pdl-systick-led
-*              for ModusToolbox.
-*
+* Description: This is the source code for the Systick example using PDL APIs.
+*              
 * Related Document: See README.md
 *
 *
 *******************************************************************************
-* Copyright 2022, Cypress Semiconductor Corporation (an Infineon company) or
+* Copyright 2022-2023, Cypress Semiconductor Corporation (an Infineon company) or
 * an affiliate of Cypress Semiconductor Corporation.  All rights reserved.
 *
 * This software, including source code, documentation and related
@@ -46,9 +45,18 @@
 /*******************************************************************************
 * Macros
 ********************************************************************************/
-#define SYSTICK_RELOAD_VAL   (10000000UL)
-#define SYSTICK_PERIOD_TIMES (10u)
+/* 8MHz IMO clock with 8000000 reload value to generate 1s interrupt */
+#define SYSTICK_RELOAD_VAL   (8000000UL)
 
+#ifdef XMC7200D_E272K8384
+#define KIT_XMC72
+
+#elif defined XMC7100D_F176K4160
+#define KIT_XMC71_V1
+
+#elif defined XMC7100D_F100K4160
+#define KIT_XMC71_V2
+#endif
 /*******************************************************************************
 * Function Prototypes
 ********************************************************************************/
@@ -57,14 +65,13 @@ static void toggle_led_on_systick_handler(void);
 /*******************************************************************************
 * Global Variables
 ********************************************************************************/
-uint32_t counterTick = 0;
 
 /*******************************************************************************
 * Function Name: main
 ********************************************************************************
 * Summary:
 * This main achieve the systick timer interrupt function. Toggle user led when generate
-* the systick interrupt up to 10 times.
+* the systick interrupt with 1s period.
 *
 * Return: int
 *
@@ -82,27 +89,26 @@ int main(void)
 
     __enable_irq();
 
-    /*Initialize the User LED*/
+    /* Initialize the User LED */
+#if defined(KIT_XMC71_V1) || defined(KIT_XMC71_V2)
+    Cy_GPIO_Pin_FastInit(P5_0_PORT, P5_0_NUM, CY_GPIO_DM_STRONG, 1u, P5_0_GPIO);
+#else
     Cy_GPIO_Pin_FastInit(P16_1_PORT, P16_1_NUM, CY_GPIO_DM_STRONG, 1u, P16_1_GPIO);
+#endif
 
-    /*Initialize the systick*/
-    Cy_SysTick_Init(CY_SYSTICK_CLOCK_SOURCE_CLK_CPU, SYSTICK_RELOAD_VAL);
+    /* Initialize the systick, set the 8MHz IMO as clock source */
+    Cy_SysTick_Init(CY_SYSTICK_CLOCK_SOURCE_CLK_IMO, SYSTICK_RELOAD_VAL);
 
-    /*Set Systick interrupt callback*/
+    /* Set Systick interrupt callback */
     Cy_SysTick_SetCallback(0, toggle_led_on_systick_handler);
 
-    /*Enable Systick and the Systick interrupt*/
+    /* Enable Systick and the Systick interrupt */
     Cy_SysTick_Enable();
 
 
     for (;;)
     {
-        /*toggle user led*/
-        if(counterTick > SYSTICK_PERIOD_TIMES)
-        {
-            counterTick = 0;
-            Cy_GPIO_Inv(P16_1_PORT,P16_1_NUM);
-        }
+
     }
 }
 
@@ -122,7 +128,12 @@ int main(void)
 **********************************************************************************/
 void toggle_led_on_systick_handler(void)
 {
-    counterTick++;
+    /* toggle led */
+#if defined(KIT_XMC71_V1) || defined(KIT_XMC71_V2)
+    Cy_GPIO_Inv(P5_0_PORT,P5_0_NUM);
+#else
+    Cy_GPIO_Inv(P16_1_PORT,P16_1_NUM);
+#endif
 }
 
 /* [] END OF FILE */
